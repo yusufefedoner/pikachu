@@ -4,7 +4,6 @@ import random
 from config import token
 from logic import Pokemon, Wizard, Fighter
 
-# ------------------ BOT AYARLARI ------------------
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
@@ -12,24 +11,18 @@ intents.guilds = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-
-# ------------------ BOT BAŞLANGICI ------------------
 @bot.event
 async def on_ready():
     print(f'✅ Giriş yapıldı: {bot.user.name}')
 
-
-# ------------------ !go KOMUTU ------------------
+# ---------------- !go ----------------
 @bot.command()
 async def go(ctx, tür: str = None):
-    """Yeni bir Pokémon oluşturur (wizard, fighter veya normal)."""
     author = ctx.author.name
-
-    if author in Pokemon.pokemons:
-        await ctx.send("⚠️ Zaten bir Pokémon oluşturmuşsun!")
+    if author in Pokemon.pokemons and len(Pokemon.pokemons[author]) >= 3:
+        await ctx.send("⚠️ Maksimum 3 Pokémon alabilirsin!")
         return
 
-    # Tür seçimi
     if tür == "wizard":
         pokemon = Wizard(author)
         await ctx.send("🧙‍♂️ Sihirbaz Pokémon elde ettin!")
@@ -51,54 +44,86 @@ async def go(ctx, tür: str = None):
     else:
         await ctx.send("⚠️ Pokémon görüntüsü yüklenemedi.")
 
-
-# ------------------ !attack KOMUTU ------------------
+# ---------------- !attack ----------------
 @bot.command()
 async def attack(ctx):
-    """Etiketlenen kullanıcıya saldırı başlatır."""
     target = ctx.message.mentions[0] if ctx.message.mentions else None
-
     if not target:
         await ctx.send("⚔️ Saldırmak istediğin kullanıcıyı etiketle: örnek `!attack @Kullanıcı`")
         return
-
     if target.name not in Pokemon.pokemons or ctx.author.name not in Pokemon.pokemons:
         await ctx.send("👀 Her iki tarafın da Pokémon sahibi olması gerekiyor!")
         return
 
-    attacker = Pokemon.pokemons[ctx.author.name]
-    enemy = Pokemon.pokemons[target.name]
+    # En güçlü Pokémon'u seç
+    attacker = max(Pokemon.pokemons[ctx.author.name], key=lambda x: x.power)
+    enemy = max(Pokemon.pokemons[target.name], key=lambda x: x.power)
 
     result = await attacker.attack(enemy)
     await ctx.send(result)
 
-
-# ------------------ !heal KOMUTU ------------------
+# ---------------- !heal ----------------
 @bot.command()
 async def heal(ctx):
-    """Pokémon'un gücünü yeniler."""
     author = ctx.author.name
     if author in Pokemon.pokemons:
-        pokemon = Pokemon.pokemons[author]
-        heal_amount = random.randint(20, 50)
-        pokemon.power += heal_amount
-        await ctx.send(f"💖 Pokémon'unuz iyileşti! Yeni güç: {pokemon.power}")
+        for pok in Pokemon.pokemons[author]:
+            heal_amount = random.randint(20, 50)
+            pok.power += heal_amount
+        await ctx.send(f"💖 Pokémon'larınız iyileşti!")
     else:
         await ctx.send("🩹 Önce bir Pokémon oluşturmalısınız! `!go` komutunu kullanın.")
 
-
-# ------------------ !info KOMUTU ------------------
+# ---------------- !info ----------------
 @bot.command()
 async def info(ctx):
-    """Kullanıcının Pokémon'u hakkında bilgi verir."""
     author = ctx.author.name
-    if author in Pokemon.pokemons:
-        pok = Pokemon.pokemons[author]
-        info_text = await pok.info()
-        await ctx.send(f"ℹ️ @{author} Pokémon bilgileri:\n{info_text}")
-    else:
+    if author not in Pokemon.pokemons:
         await ctx.send("⚠️ Önce bir Pokémon oluşturmalısınız! `!go` komutunu kullanın.")
+        return
 
+    info_text = ""
+    for pok in Pokemon.pokemons[author]:
+        info_text += await pok.info() + "\n\n"
+    await ctx.send(f"ℹ️ @{author} Pokémon bilgileri:\n{info_text}")
 
-# ------------------ BOTU ÇALIŞTIR ------------------
+# ---------------- !history ----------------
+@bot.command()
+async def history(ctx):
+    author = ctx.author.name
+    history_list = Pokemon.get_history(author)
+    if not history_list:
+        await ctx.send("📭 Henüz hiç savaş geçmişin yok!")
+        return
+    formatted = "\n".join([f"{i+1}. {item}" for i, item in enumerate(history_list[-10:])])
+    await ctx.send(f"📜 **Son savaşların:**\n{formatted}")
+
+# ---------------- !leaderboard ----------------
+@bot.command()
+async def leaderboard(ctx):
+    if not Pokemon.pokemons:
+        await ctx.send("📭 Henüz kimsenin Pokémon'u yok!")
+        return
+
+    # Tüm Pokémon'ları tek listede sırala
+    all_pokemons = []
+    for trainer, pok_list in Pokemon.pokemons.items():
+        for pok in pok_list:
+            all_pokemons.append((trainer, pok))
+
+    sorted_pokemons = sorted(all_pokemons, key=lambda x: x[1].power, reverse=True)
+
+    leaderboard_text = ""
+    for i, (trainer, pok) in enumerate(sorted_pokemons[:10], start=1):
+        name = pok.name.capitalize() if pok.name else "Bilinmiyor"
+        leaderboard_text += f"{i}. 🏅 {trainer} - {name} ⚡ {pok.power} güç\n"
+
+    embed = discord.Embed(
+        title="🏆 Pokémon Liderlik Tablosu",
+        description=leaderboard_text,
+        color=discord.Color.gold()
+    )
+    await ctx.send(embed=embed)
+
+# ---------------- BOTU ÇALIŞTIR ----------------
 bot.run(token)
