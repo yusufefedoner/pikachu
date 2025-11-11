@@ -10,11 +10,14 @@ class Pokemon:
         self.name = None
         self.power = random.randint(50, 100)
 
-        # Oyuncunun Pokémon'u yoksa yeni oluştur, varsa mevcutu yükle
+        # Eğer oyuncunun Pokémon'u yoksa oluştur, varsa yükle
         if pokemon_trainer not in Pokemon.pokemons:
             Pokemon.pokemons[pokemon_trainer] = self
         else:
-            self = Pokemon.pokemons[pokemon_trainer]
+            existing = Pokemon.pokemons[pokemon_trainer]
+            self.pokemon_number = existing.pokemon_number
+            self.name = existing.name
+            self.power = existing.power
 
     async def get_name(self):
         url = f'https://pokeapi.co/api/v2/pokemon/{self.pokemon_number}'
@@ -23,8 +26,7 @@ class Pokemon:
                 if response.status == 200:
                     data = await response.json()
                     return data['forms'][0]['name']
-                else:
-                    return "Pikachu"
+                return "Pikachu"
 
     async def get_img(self):
         url = f'https://pokeapi.co/api/v2/pokemon/{self.pokemon_number}'
@@ -33,13 +35,12 @@ class Pokemon:
                 if response.status == 200:
                     data = await response.json()
                     return data['sprites']['front_default']
-                else:
-                    return None
+                return None
 
     async def info(self):
         if not self.name:
             self.name = await self.get_name()
-        return f"🎮 Pokémonunuzun ismi: **{self.name.capitalize()}**\n⚡ Güç: {self.power}"
+        return f"🎮 Pokémon'unuzun ismi: **{self.name.capitalize()}**\n⚡ Güç: {self.power}"
 
     async def show_img(self):
         return await self.get_img()
@@ -50,7 +51,6 @@ class Pokemon:
         if not enemy.name:
             enemy.name = await enemy.get_name()
 
-        # Saldırıda şans faktörü
         attack_value = random.randint(10, 50)
         enemy.power -= attack_value
 
@@ -61,7 +61,6 @@ class Pokemon:
             return f"⚔️ {self.name.capitalize()} {enemy.name.capitalize()}’ye {attack_value} hasar verdi! ({enemy.power} güç kaldı.)"
 
 
-# Süper güç sınıfları
 class Wizard(Pokemon):
     def __init__(self, pokemon_trainer):
         super().__init__(pokemon_trainer)
@@ -69,13 +68,19 @@ class Wizard(Pokemon):
         self.power += self.magic_power
 
     async def attack(self, enemy):
+        if not self.name:
+            self.name = await self.get_name()
+        if not enemy.name:
+            enemy.name = await enemy.get_name()
+
         spell_damage = random.randint(30, 70)
         enemy.power -= spell_damage
+
         if enemy.power <= 0:
             enemy.power = 0
-            return f"🧙‍♂️ Büyücü Pokémon {enemy.name.capitalize()}’yi büyüyle yendi!"
+            return f"🧙‍♂️ {self.name.capitalize()} büyüyle {enemy.name.capitalize()}’yi yendi!"
         else:
-            return f"✨ {self.name.capitalize()} {enemy.name.capitalize()}’ye {spell_damage} büyü hasarı verdi!"
+            return f"✨ {self.name.capitalize()} {enemy.name.capitalize()}’ye {spell_damage} büyü hasarı verdi! ({enemy.power} güç kaldı.)"
 
 
 class Fighter(Pokemon):
@@ -85,10 +90,16 @@ class Fighter(Pokemon):
         self.power += self.strength
 
     async def attack(self, enemy):
+        if not self.name:
+            self.name = await self.get_name()
+        if not enemy.name:
+            enemy.name = await enemy.get_name()
+
         hit = random.randint(20, 60)
         enemy.power -= hit
+
         if enemy.power <= 0:
             enemy.power = 0
-            return f"🥊 Dövüşçü Pokémon {enemy.name.capitalize()}’yi nakavt etti!"
+            return f"🥊 {self.name.capitalize()} {enemy.name.capitalize()}’yi nakavt etti!"
         else:
-            return f"💪 {self.name.capitalize()} {enemy.name.capitalize()}’ye {hit} hasar verdi!"
+            return f"💪 {self.name.capitalize()} {enemy.name.capitalize()}’ye {hit} hasar verdi! ({enemy.power} güç kaldı.)"
