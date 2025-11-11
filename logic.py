@@ -2,22 +2,20 @@ import aiohttp
 import random
 
 class Pokemon:
-    pokemons = {}
+    pokemons = {}  # {trainer_name: [Pokemon1, Pokemon2, ...]}
+    battle_history = {}  # {trainer_name: [str, ...]}
 
     def __init__(self, pokemon_trainer):
         self.pokemon_trainer = pokemon_trainer
         self.pokemon_number = random.randint(1, 1000)
         self.name = None
         self.power = random.randint(50, 100)
+        self.health = random.randint(100, 500)
 
-        # Eğer oyuncunun Pokémon'u yoksa oluştur, varsa yükle
         if pokemon_trainer not in Pokemon.pokemons:
-            Pokemon.pokemons[pokemon_trainer] = self
+            Pokemon.pokemons[pokemon_trainer] = [self]
         else:
-            existing = Pokemon.pokemons[pokemon_trainer]
-            self.pokemon_number = existing.pokemon_number
-            self.name = existing.name
-            self.power = existing.power
+            Pokemon.pokemons[pokemon_trainer].append(self)
 
     async def get_name(self):
         url = f'https://pokeapi.co/api/v2/pokemon/{self.pokemon_number}'
@@ -40,7 +38,7 @@ class Pokemon:
     async def info(self):
         if not self.name:
             self.name = await self.get_name()
-        return f"🎮 Pokémon'unuzun ismi: **{self.name.capitalize()}**\n⚡ Güç: {self.power}"
+        return f"🎮 Pokémon'unuzun ismi: **{self.name.capitalize()}**\n⚡ Güç: {self.power}\n❤️ Can: {self.health}"
 
     async def show_img(self):
         return await self.get_img()
@@ -53,13 +51,25 @@ class Pokemon:
 
         attack_value = random.randint(10, 50)
         enemy.power -= attack_value
-
         if enemy.power <= 0:
             enemy.power = 0
-            return f"💥 {self.name.capitalize()} {enemy.name.capitalize()}’yi yendi!"
+            result_text = f"💥 {self.name.capitalize()} {enemy.name.capitalize()}’yi yendi!"
         else:
-            return f"⚔️ {self.name.capitalize()} {enemy.name.capitalize()}’ye {attack_value} hasar verdi! ({enemy.power} güç kaldı.)"
+            result_text = f"⚔️ {self.name.capitalize()} {enemy.name.capitalize()}’ye {attack_value} hasar verdi! ({enemy.power} güç kaldı.)"
 
+        Pokemon.add_battle_history(self.pokemon_trainer, result_text)
+        Pokemon.add_battle_history(enemy.pokemon_trainer, result_text)
+        return result_text
+
+    @classmethod
+    def add_battle_history(cls, trainer, text):
+        if trainer not in cls.battle_history:
+            cls.battle_history[trainer] = []
+        cls.battle_history[trainer].append(text)
+
+    @classmethod
+    def get_history(cls, trainer):
+        return cls.battle_history.get(trainer, [])
 
 class Wizard(Pokemon):
     def __init__(self, pokemon_trainer):
@@ -75,13 +85,15 @@ class Wizard(Pokemon):
 
         spell_damage = random.randint(30, 70)
         enemy.power -= spell_damage
-
         if enemy.power <= 0:
             enemy.power = 0
-            return f"🧙‍♂️ {self.name.capitalize()} büyüyle {enemy.name.capitalize()}’yi yendi!"
+            result_text = f"🧙‍♂️ {self.name.capitalize()} büyüyle {enemy.name.capitalize()}’yi yendi!"
         else:
-            return f"✨ {self.name.capitalize()} {enemy.name.capitalize()}’ye {spell_damage} büyü hasarı verdi! ({enemy.power} güç kaldı.)"
+            result_text = f"✨ {self.name.capitalize()} {enemy.name.capitalize()}’ye {spell_damage} büyü hasarı verdi! ({enemy.power} güç kaldı.)"
 
+        Pokemon.add_battle_history(self.pokemon_trainer, result_text)
+        Pokemon.add_battle_history(enemy.pokemon_trainer, result_text)
+        return result_text
 
 class Fighter(Pokemon):
     def __init__(self, pokemon_trainer):
@@ -97,9 +109,12 @@ class Fighter(Pokemon):
 
         hit = random.randint(20, 60)
         enemy.power -= hit
-
         if enemy.power <= 0:
             enemy.power = 0
-            return f"🥊 {self.name.capitalize()} {enemy.name.capitalize()}’yi nakavt etti!"
+            result_text = f"🥊 {self.name.capitalize()} {enemy.name.capitalize()}’yi nakavt etti!"
         else:
-            return f"💪 {self.name.capitalize()} {enemy.name.capitalize()}’ye {hit} hasar verdi! ({enemy.power} güç kaldı.)"
+            result_text = f"💪 {self.name.capitalize()} {enemy.name.capitalize()}’ye {hit} hasar verdi! ({enemy.power} güç kaldı.)"
+
+        Pokemon.add_battle_history(self.pokemon_trainer, result_text)
+        Pokemon.add_battle_history(enemy.pokemon_trainer, result_text)
+        return result_text
